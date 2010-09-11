@@ -4,6 +4,32 @@
 
 # please see doc/mirroring.mkd for instructions on how to use this
 
+# this script is typically invoked as a hook caused by a push, which means
+# there are two important considerations:
+
+# (1)   this script should *never* write to STDOUT, only to STDERR, otherwise
+#       the git client on the remote side may get confused
+
+# (2)   this script is really an "admin" function, but since the user who did
+#       the push is usually *not* an admin, its output may confuse him/her
+
+# if your normal users are ok with seeing these messages, you can either:
+# - put this line in the rc file:
+#       $GL_ADMIN_NOTIFY='cat >&2'
+# - or you can replace the last line in this script with
+#       fi >&2
+
+# to divert these messages to an admin, set something like this in the rc
+# file (actually any command that accepts STDIN as the data and can use an
+# environment variable called $SUBJECT to mark the output in some way):
+
+#   $GL_ADMIN_NOTIFY='mail -s "$SUBJECT" admin@example.com';
+
+# this mechanism is thus generic enough to handle other types of scripts that
+# may produce "admin" output; just set the "SUBJECT" env var before running
+# anything that might eventually invoke the GL_ADMIN_NOTIFY command
+export SUBJECT="gitolite mirror push report"
+
 if [ -n "$GL_SLAVES" ]
 then
     for mirror in $GL_SLAVES
@@ -18,4 +44,4 @@ then
                 echo "WARNING: mirror push to $mirror failed"
         fi
     done
-fi >&2
+fi 2>&1 | eval $GL_ADMIN_NOTIFY
